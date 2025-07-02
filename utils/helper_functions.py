@@ -4,8 +4,8 @@
 import math
 def proportional_split(
         num_to_split: int,
-        proportions: np.array
-) -> np.array:
+        proportions: np.ndarray
+) -> list:
     """
     Splits a number to proportional subsets.
     
@@ -31,15 +31,14 @@ def proportional_split(
 from sklearn.metrics import (accuracy_score,
                              precision_score,
                              recall_score,
-                             mean_squared_error,
                              f1_score,
                              roc_auc_score
                              )
-from typing import Any, Dict
+from typing import Any
 def evaluate_model(
         estimator: Any,
-        X_test: np.array,
-        Y_test: np.array
+        X_test: np.ndarray,
+        Y_test: np.ndarray
 ) -> dict[str, float]:
     """
     Evaluates a trained estimator, with basic sklearn metrics.
