@@ -17,7 +17,7 @@ def perturb_within_distribution(
         cutoff_point: int = -1,
         excluded_columns: list[str] = None,
         proportional_perturbation: bool = True,
-        sigma: float = 2.0,
+        gamma: float = 2.0,
         random_state: int = 42,
         decimal_places = 2,
         negative_values: bool = True,
@@ -31,25 +31,24 @@ def perturb_within_distribution(
 
     OBLIGATORY
     :param original_data: DataFrame containing original data to modify.
-    :param pct_to_perturb: Percentage (int) of original rows to perturb.
+    :param pct_to_perturb: Percentage of original rows to perturb.
     :param target_column: The name of the column containing the class labels.
 
     OPTIONAL
-    :param features_to_perturb: List of feature names to modify or integer for number of features to randomly modify per row.
+    :param features_to_perturb: List of feature names to modify or integer for number of random features to modify per row.
         Default value randomly modifies random number of features per row.
         If default is chosen, pay attention to the cutoff_point.
     :param cutoff_point: Maximum number of features to randomly modify per row.
         Only used when features_to_perturb is set to default value.
-        If such a limit is not needed, leave it at its default value.
+        If such a limit is not desired, leave it at its default value.
     :param excluded_columns: List of column names to exclude from a perturbation process.
-        If neither list nor non-positive integer, random modify count per row.
     :param proportional_perturbation: If True, applies row perturbations based on the class label distribution.
-    :param sigma: Amount multiplied by the standard deviation. Defines the scale of the noise.
-    :param random_state: Seed for random number generator.
+    :param gamma: Amount multiplied by the standard deviation. Defines the scale of the noise.
+    :param random_state: Seed of random number generator.
     :param decimal_places: Number of decimal places to use in modified data.
-        Advice: Set the value to the maximum number of decimal places across the whole df.
-    :param negative_values: Determines whether the output data should always be positive.
-    :param save: Whether to save the new CSV file.
+        Advice: Set the value to the highest number of decimal places across all features.
+    :param negative_values: Determines whether negative values in the output data are allowed.
+    :param save: Specify whether to save the output to a CSV file.
     :param directory_name: Files are saved in data/perturbed_datasets/{directory_name}.
     :param key_word: Keyword to use to identify a new CSV file.
     :return: DataFrame with certain rows modified with rows indexes.
@@ -63,8 +62,8 @@ def perturb_within_distribution(
     else:
         pct_to_perturb *= 0.01
 
-    if sigma < 0:
-        raise ValueError("Sigma must be positive float number.")
+    if gamma < 0:
+        raise ValueError("gamma must be positive float number.")
 
     if target_column not in original_data.columns:
         raise KeyError(f"There is no column named '{target_column}' in this DataFrame. ")
@@ -86,7 +85,7 @@ def perturb_within_distribution(
     n_rows: int = len(modified_data)
     n_cols: int = len(all_features)
 
-    num_to_perturb: int = int(pct_to_perturb * n_rows)
+    num_to_perturb: int = int(pct_to_perturb * n_rows + 0.5)
 
     if proportional_perturbation:
         proportions: Series = modified_data['target'].value_counts(normalize=True)
@@ -141,7 +140,7 @@ def perturb_within_distribution(
         col_idx: np.ndarray = modified_data.columns.get_indexer(cols_to_perturb)
         original_cells: np.ndarray = modified_data.iloc[i, col_idx].to_numpy()
         stds: np.ndarray = features_stds[col_idx]
-        noise: np.ndarray = rng.standard_normal(size=original_cells.shape)*(stds*sigma)
+        noise: np.ndarray = rng.standard_normal(size=original_cells.shape)*(stds*gamma)
 
         perturbed_cells: np.ndarray = original_cells + noise
 
@@ -193,8 +192,8 @@ def generate_around_outliers(
     :param pct_to_enter: Percentage (int) of original rows to enter.
 
     OPTIONAL
-    :param feature_range_pct: Percentage (int) to calculate sigma,
-        where sigma is a value representing some percentage (sigma_frac) of each feature range.
+    :param feature_range_pct: Percentage (int) to calculate gamma,
+        where gamma is a value representing some percentage (gamma_frac) of each feature range.
     :param random_state: Seed for random number generator.
     :param decimal_places: Number of decimal places to use in new data.
         Advice: Set the value to the maximum number of decimal places across the whole df.
@@ -215,7 +214,7 @@ def generate_around_outliers(
 
     num_to_generate = int(pct_to_enter * len(original_data))
     feature_range = original_data.max(axis=0) - original_data.min(axis=0)
-    sigma = (feature_range_pct*feature_range).to_numpy()
+    gamma = (feature_range_pct*feature_range).to_numpy()
 
     bases = (
         input_outliers
@@ -229,7 +228,7 @@ def generate_around_outliers(
 
     noise = pd.DataFrame(
         rng.standard_normal(size=(
-            num_to_generate, len(features)))*sigma,
+            num_to_generate, len(features)))*gamma,
             columns=features,
             index=bases.index)
 
