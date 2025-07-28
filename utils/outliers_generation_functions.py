@@ -18,7 +18,7 @@ def perturb_within_distribution(
         excluded_columns: list[str] = None,
         proportional_perturbation: bool = True,
         gamma: float = 2.0,
-        random_state: int = 42,
+        random_seed: int = 42,
         decimal_places = 2,
         negative_values: bool = True,
         save: bool = False,
@@ -44,7 +44,7 @@ def perturb_within_distribution(
     :param excluded_columns: List of column names to exclude from a perturbation process.
     :param proportional_perturbation: If True, applies row perturbations based on the class label distribution.
     :param gamma: Amount multiplied by the standard deviation. Defines the scale of the noise.
-    :param random_state: Seed of random number generator.
+    :param random_seed: Seed of random number generator.
     :param decimal_places: Number of decimal places to use in modified data.
         Advice: Set the value to the highest number of decimal places across all features.
     :param negative_values: Determines whether negative values in the output data are allowed.
@@ -54,7 +54,7 @@ def perturb_within_distribution(
     :return: DataFrame with certain rows modified with rows indexes.
     """
 
-    rng = np.random.default_rng(random_state)
+    rng = np.random.default_rng(random_seed)
 
     # Input check
     if pct_to_perturb < 1:
@@ -173,7 +173,7 @@ def generate_around_outliers(
     input_outliers: pd.DataFrame,
     pct_to_enter: int,
     feature_range_pct: int = 33,
-    random_state: int = 42,
+    random_seed: int = 42,
     decimal_places = 2,
     negative_values: bool = False,
     save: bool = False,
@@ -194,7 +194,7 @@ def generate_around_outliers(
     OPTIONAL
     :param feature_range_pct: Percentage (int) to calculate gamma,
         where gamma is a value representing some percentage (gamma_frac) of each feature range.
-    :param random_state: Seed for random number generator.
+    :param random_seed: Seed for random number generator.
     :param decimal_places: Number of decimal places to use in new data.
         Advice: Set the value to the maximum number of decimal places across the whole df.
     :param negative_values: Determines whether the output data should always be positive.
@@ -204,7 +204,7 @@ def generate_around_outliers(
     :return: DataFrame containing new outliers.
     """
 
-    rng = np.random.default_rng(random_state)
+    rng = np.random.default_rng(random_seed)
 
     if feature_range_pct < 1 and pct_to_enter < 1:
         raise ValueError("Percentage values must be positive integers.")

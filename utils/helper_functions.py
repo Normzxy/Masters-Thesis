@@ -32,7 +32,8 @@ from sklearn.metrics import (accuracy_score,
                              precision_score,
                              recall_score,
                              f1_score,
-                             roc_auc_score
+                             confusion_matrix,
+                             balanced_accuracy_score
                              )
 from typing import Any
 def evaluate_model(
@@ -50,9 +51,12 @@ def evaluate_model(
     """
 
     Y_pred = estimator.predict(X_test)
+    tn, fp, fn, tp = confusion_matrix(Y_test, Y_pred).ravel()
     return {
-        'Accuracy': accuracy_score(Y_test, Y_pred),
-        'Precision': precision_score(Y_test, Y_pred, average='macro'),
-        'Recall': recall_score(Y_test, Y_pred, average='macro'),
-        'F1 Score': f1_score(Y_test, Y_pred)
+        'accuracy': accuracy_score(Y_test, Y_pred),
+        'precision': precision_score(Y_test, Y_pred, average='binary', pos_label=1),
+        'recall': recall_score(Y_test, Y_pred, average='binary', pos_label=1),
+        'f1_score': f1_score(Y_test, Y_pred, average='binary', pos_label=1),
+        'specificity': tn / (tn + fp),
+        'balanced_accuracy': balanced_accuracy_score(Y_test, Y_pred)
     }
