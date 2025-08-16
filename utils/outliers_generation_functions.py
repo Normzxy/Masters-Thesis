@@ -13,10 +13,10 @@ def perturb_within_distribution(
         original_data: pd.DataFrame,
         pct_to_perturb: int,
         target_column: str,
-        features_to_perturb: list[str] | int = -1,
+        feats_to_perturb: list[str] | int = -1,
         cutoff_point: int = -1,
         excluded_columns: list[str] = None,
-        proportional_perturbation: bool = True,
+        proportional: bool = True,
         gamma: float = 2.0,
         random_seed: int = 42,
         decimal_places = 2,
@@ -35,14 +35,14 @@ def perturb_within_distribution(
     :param target_column: The name of the column containing the class labels.
 
     OPTIONAL
-    :param features_to_perturb: List of feature names to modify or integer for number of random features to modify per row.
+    :param feats_to_perturb: List of feature names to modify or integer for number of random features to modify per row.
         Default value randomly modifies random number of features per row.
         If default is chosen, pay attention to the cutoff_point.
     :param cutoff_point: Maximum number of features to randomly modify per row.
-        Only used when features_to_perturb is set to default value.
+        Only used when feats_to_perturb is set to default value.
         If such a limit is not desired, leave it at its default value.
     :param excluded_columns: List of column names to exclude from a perturbation process.
-    :param proportional_perturbation: If True, applies row perturbations based on the class label distribution.
+    :param proportional: If True, applies row perturbations based on the class label distribution.
     :param gamma: Amount multiplied by the standard deviation. Defines the scale of the noise.
     :param random_seed: Seed of random number generator.
     :param decimal_places: Number of decimal places to use in modified data.
@@ -87,7 +87,7 @@ def perturb_within_distribution(
 
     num_to_perturb: int = int(pct_to_perturb * n_rows + 0.5)
 
-    if proportional_perturbation:
+    if proportional:
         proportions: Series = modified_data['target'].value_counts(normalize=True)
         num_per_class: list = hf.proportional_split(num_to_perturb, proportions.values)
         num_per_class: dict = dict(zip(proportions.index, num_per_class))
@@ -106,11 +106,11 @@ def perturb_within_distribution(
     # Each row modified independently
     for i in modified_idxs:
         # Features selected by user
-        if isinstance(features_to_perturb, list) and features_to_perturb:
+        if isinstance(feats_to_perturb, list) and feats_to_perturb:
             cols_to_perturb: list = []
             invalid_features: list = []
 
-            for f in features_to_perturb:
+            for f in feats_to_perturb:
                 if f in all_features:
                     cols_to_perturb.append(f)
                 else:
@@ -122,9 +122,9 @@ def perturb_within_distribution(
         # Features selected randomly
         else:
             # Integer chosen by user
-            if isinstance(features_to_perturb, int) and (features_to_perturb > 0):
-                k: int = min(features_to_perturb, n_cols)
-                if features_to_perturb > n_cols:
+            if isinstance(feats_to_perturb, int) and (feats_to_perturb > 0):
+                k: int = min(feats_to_perturb, n_cols)
+                if feats_to_perturb > n_cols:
                     warnings.warn(f"Chosen value exceeds the number of features. Clamped to {n_cols}.")
             # Random integer to be generated
             else:
