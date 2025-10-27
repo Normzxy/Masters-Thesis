@@ -1,17 +1,19 @@
 ﻿# from utils import *
 __all__ = [
-    "proportional_split",
-    "evaluate_model",
     "perturb_within_distribution",
-    "generate_around_outliers",
+    "evaluate_model",
+    "plot_metrics",
+    "proportional_split",
+    "spearman_with_bootstrap"
 ]
 
 from .helper_functions import (
-    proportional_split,
     evaluate_model,
+    plot_metrics,
+    proportional_split,
+    spearman_with_bootstrap
 )
 
 from .outliers_generation_functions import (
-    perturb_within_distribution,
-    generate_around_outliers,
+    perturb_within_distribution
 )

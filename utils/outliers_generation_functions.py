@@ -1,5 +1,8 @@
-﻿import numpy as np
+﻿import time
+
+import numpy as np
 import pandas as pd
+import numbers
 import os
 import warnings
 from pandas import Series
@@ -122,7 +125,7 @@ def perturb_within_distribution(
         # Features selected randomly
         else:
             # Integer chosen by user
-            if isinstance(feats_to_perturb, int) and (feats_to_perturb > 0):
+            if isinstance(feats_to_perturb, (int, np.integer)) and (feats_to_perturb > 0):
                 k: int = min(feats_to_perturb, n_cols)
                 if feats_to_perturb > n_cols:
                     warnings.warn(f"Chosen value exceeds the number of features. Clamped to {n_cols}.")
@@ -156,92 +159,18 @@ def perturb_within_distribution(
         # Assign values to DataFrame
         modified_data.iloc[i, col_idx] = perturbed_cells
 
+    if isinstance(feats_to_perturb, list):
+        count = len(feats_to_perturb)
+    elif isinstance(feats_to_perturb, (int, np.integer)) and (feats_to_perturb > 0):
+        count = feats_to_perturb
+    else:
+        count = f"rnd_{int(time.time() * 1000)}"
+
     if save:
         folder_path = f'../../data/perturbed_datasets/{directory_name}'
         os.makedirs(folder_path, exist_ok=True)
-        filename = f'../../data/perturbed_datasets/{directory_name}/{key_word}_{round(pct_to_perturb*100)}_pct.csv'
+
+        filename = f'../../data/perturbed_datasets/{directory_name}/{key_word}_P[{round(pct_to_perturb*100)}]_F[{count}]_G[{gamma}].csv'
         modified_data.to_csv(filename, index=False)
 
     return modified_data, modified_idxs
-
-
-################################################
-# GENERATE AROUND EXISTING OUTLIERS WITH NOISE #
-################################################
-def generate_around_outliers(
-    original_data: pd.DataFrame,
-    input_outliers: pd.DataFrame,
-    pct_to_enter: int,
-    feature_range_pct: int = 33,
-    random_seed: int = 42,
-    decimal_places = 2,
-    negative_values: bool = False,
-    save: bool = False,
-    directory_name: str = 'unnamed',
-    key_word: str = ''
-) -> pd.DataFrame:
-    """
-    Generates a new CSV file consisting of new outliers, based on original data.
-    The generated values are based on the values given to the function.
-    CSV file is then saved in a data/generated_data/{directory_name} directory.
-    Outlier Y label should be named 'target'.
-
-    OBLIGATORY
-    :param original_data: DataFrame containing original data.
-    :param input_outliers: Reference outliers to generate around.
-    :param pct_to_enter: Percentage (int) of original rows to enter.
-
-    OPTIONAL
-    :param feature_range_pct: Percentage (int) to calculate gamma,
-        where gamma is a value representing some percentage (gamma_frac) of each feature range.
-    :param random_seed: Seed for random number generator.
-    :param decimal_places: Number of decimal places to use in new data.
-        Advice: Set the value to the maximum number of decimal places across the whole df.
-    :param negative_values: Determines whether the output data should always be positive.
-    :param save: Whether to save the new CSV file.
-    :param directory_name: Files are saved in data/generated_data/{directory_name}.
-    :param key_word: Keyword to use to identify a new CSV file.
-    :return: DataFrame containing new outliers.
-    """
-
-    rng = np.random.default_rng(random_seed)
-
-    if feature_range_pct < 1 and pct_to_enter < 1:
-        raise ValueError("Percentage values must be positive integers.")
-    else:
-        feature_range_pct *= 0.01
-        pct_to_enter *= 0.01
-
-    num_to_generate = int(pct_to_enter * len(original_data))
-    feature_range = original_data.max(axis=0) - original_data.min(axis=0)
-    gamma = (feature_range_pct*feature_range).to_numpy()
-
-    bases = (
-        input_outliers
-        .sample(n=num_to_generate, replace=True, random_state=rng)
-        .reset_index(drop=True)
-    )
-
-    features = original_data.columns.difference(['target'])
-    min_vals = input_outliers[features].min()*feature_range_pct
-    lower_noise = min_vals.values - bases[features].to_numpy()
-
-    noise = pd.DataFrame(
-        rng.standard_normal(size=(
-            num_to_generate, len(features)))*gamma,
-            columns=features,
-            index=bases.index)
-
-    if not negative_values:
-        noise = noise.clip(lower=lower_noise)
-
-    new_data = (bases[features] + noise).round(decimal_places)
-    new_data['target'] = bases['target'].values
-
-    if save:
-        folder_path = f'../../data/generated_around_outliers/{directory_name}'
-        os.makedirs(folder_path, exist_ok=True)
-        filename = f'../../data/generated_around_outliers/{directory_name}/{key_word}_{round(pct_to_enter*100)}_pct.csv'
-        new_data.to_csv(filename, index=False)
-
-    return new_data
