@@ -109,7 +109,8 @@ def plot_metrics(
         x_label: str = None,
         y_label: str = None,
         y_range: tuple[float, float] = None,
-        title: str = None,
+        legend_loc: tuple[float, float] = None,
+        title: str = None
 ) -> None:
     """
     :param metrics: DataFrame containing performance metrics.
@@ -119,6 +120,7 @@ def plot_metrics(
     :param x_label: Name of the y-axis label to display.
     :param y_label: (optinal) Name of the y-axis label to display.
     :param y_range: (optional) Tuple containing the minimum and maximum values for the y-axis (y_min, y_max).
+    :param legend_loc: (optional) Location for the legend, as a pair of (x, y) floats.
     :param title: (optional) Title for the plot.
     :return:
     """
@@ -148,9 +150,12 @@ def plot_metrics(
         plt.ylabel(y_label, size=10)
     plt.ylim(metric_min - 0.005, metric_max + 0.005)
 
+    if legend_loc is None:
+        legend_loc = (0.04, 0.06)
+    plt.legend(loc='lower left', prop={'size': 12}, bbox_to_anchor=legend_loc)
+
     if title is not None:
         plt.title(title)
 
     plt.grid(True)
-    plt.legend(loc='lower left', prop={'size': 12}, bbox_to_anchor=(0.04, 0.06))
     plt.tight_layout()
