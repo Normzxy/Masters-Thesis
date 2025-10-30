@@ -16,12 +16,12 @@ def perturb_within_distribution(
         original_data: pd.DataFrame,
         pct_to_perturb: int,
         target_column: str,
-        feats_to_perturb: list[str] | int = -1,
-        cutoff_point: int = -1,
+        feats_to_perturb: list[str] | int = None,
+        cutoff_point: int = None,
         excluded_columns: list[str] = None,
         proportional: bool = True,
         gamma: float = 2.0,
-        random_seed: int = 42,
+        random_seed: int = None,
         decimal_places = 2,
         negative_values: bool = True,
         save: bool = False,
@@ -29,35 +29,39 @@ def perturb_within_distribution(
         key_word: str = ''
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """
-    Adds a specific noise to the original data to create new outliers.
-    CSV file is then saved in a data/perturbed_datasets/{directory_name} directory.
+    Adds specific noise to the original data to create new outliers.
+    The resulting CSV file is saved in the `data/perturbed_datasets/{directory_name}` directory.
 
-    OBLIGATORY
-    :param original_data: DataFrame containing original data to modify.
-    :param pct_to_perturb: Percentage of original rows to perturb.
-    :param target_column: The name of the column containing the class labels.
+    Args:
+        original_data (pd.DataFrame): DataFrame containing the original data to modify.
+        pct_to_perturb (float): Percentage of original rows to perturb.
+        target_column (str): Name of the column containing class labels.
 
-    OPTIONAL
-    :param feats_to_perturb: List of feature names to modify or integer for number of random features to modify per row.
-        Default value randomly modifies random number of features per row.
-        If default is chosen, pay attention to the cutoff_point.
-    :param cutoff_point: Maximum number of features to randomly modify per row.
-        Only used when feats_to_perturb is set to default value.
-        If such a limit is not desired, leave it at its default value.
-    :param excluded_columns: List of column names to exclude from a perturbation process.
-    :param proportional: If True, applies row perturbations based on the class label distribution.
-    :param gamma: Amount multiplied by the standard deviation. Defines the scale of the noise.
-    :param random_seed: Seed of random number generator.
-    :param decimal_places: Number of decimal places to use in modified data.
-        Advice: Set the value to the highest number of decimal places across all features.
-    :param negative_values: Determines whether negative values in the output data are allowed.
-    :param save: Specify whether to save the output to a CSV file.
-    :param directory_name: Files are saved in data/perturbed_datasets/{directory_name}.
-    :param key_word: Keyword to use to identify a new CSV file.
-    :return: DataFrame with certain rows modified with rows indexes.
+        feats_to_perturb (list[str] | int, optional): List of feature names to modify,
+            or an integer specifying the number of random features to modify per row.
+            Default behavior randomly modifies a random number of features per row.
+            If left as default, pay attention to the `cutoff_point` parameter.
+        cutoff_point (int, optional): Maximum number of features to randomly modify per row.
+            Used only when `feats_to_perturb` is left as default.
+        excluded_columns (list[str], optional): Columns to exclude from the perturbation process.
+        proportional (bool, optional): If True, applies row perturbations based on the class label distribution.
+        gamma (float, optional): Multiplier for the standard deviation that defines the scale of the noise.
+        random_seed (int, optional): Seed for the random number generator.
+        decimal_places (int, optional): Number of decimal places in modified data.
+            Tip: Set to the maximum number of decimal places across all features.
+        negative_values (bool, optional): Whether to allow negative values in the output data.
+        save (bool, optional): Whether to save the perturbed dataset as a CSV file.
+        directory_name (str, optional): Subdirectory name under `data/perturbed_datasets/` to save the file.
+        key_word (str, optional): Keyword used to identify the output CSV file.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing modified rows (with original row indexes).
     """
 
-    rng = np.random.default_rng(random_seed)
+    if random_seed is None:
+        rng = np.random.default_rng()
+    else:
+        rng = np.random.default_rng(random_seed)
 
     # Input check
     if pct_to_perturb < 1:
@@ -109,7 +113,10 @@ def perturb_within_distribution(
     # Each row modified independently
     for i in modified_idxs:
         # Features selected by user
-        if isinstance(feats_to_perturb, list) and feats_to_perturb:
+        if isinstance(feats_to_perturb, list):
+            if len(feats_to_perturb) == 0:
+                raise ValueError("List of features to perturb cannot be empty.")
+
             cols_to_perturb: list = []
             invalid_features: list = []
 
@@ -120,19 +127,34 @@ def perturb_within_distribution(
                     invalid_features.append(f)
 
             if invalid_features:
-                warnings.warn(f"Invalid features: {invalid_features}")
+                warnings.warn(f"Invalid features ignored: {invalid_features}")
+
+            if not cols_to_perturb:
+                raise ValueError("No valid features to perturb provided in the list.")
 
         # Features selected randomly
         else:
             # Integer chosen by user
-            if isinstance(feats_to_perturb, (int, np.integer)) and (feats_to_perturb > 0):
-                k: int = min(feats_to_perturb, n_cols)
-                if feats_to_perturb > n_cols:
-                    warnings.warn(f"Chosen value exceeds the number of features. Clamped to {n_cols}.")
+            if isinstance(feats_to_perturb, (int, np.integer)):
+                k: int = feats_to_perturb
+
+                if k > n_cols:
+                    k = n_cols
+                    warnings.warn(
+                        f"Parameter feats_to_perturb exceeds the number of features. Clamped to {n_cols}.")
+
+                if k <= 0:
+                    raise ValueError("No valid features to perturb provided in the list.")
+
             # Random integer to be generated
             else:
-                if cutoff_point == -1:
+                if cutoff_point is None:
                     cutoff_point = n_cols
+
+                if  cutoff_point > n_cols or cutoff_point <= 0:
+                    cutoff_point = n_cols
+                    warnings.warn(
+                        "Invalid cutoff_point parameter. No additional restriction has been applied.")
 
                 k: int = rng.integers(1, cutoff_point + 1)
 
@@ -161,8 +183,8 @@ def perturb_within_distribution(
 
     if isinstance(feats_to_perturb, list):
         count = len(feats_to_perturb)
-    elif isinstance(feats_to_perturb, (int, np.integer)) and (feats_to_perturb > 0):
-        count = feats_to_perturb
+    elif isinstance(feats_to_perturb, (int, np.integer)):
+        count = k
     else:
         count = f"rnd_{int(time.time() * 1000)}"
 

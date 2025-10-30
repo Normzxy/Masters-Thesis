@@ -110,6 +110,7 @@ def plot_metrics(
         y_label: str = None,
         y_range: tuple[float, float] = None,
         legend_loc: tuple[float, float] = None,
+        fig_size: tuple[int, int] = (10, 6),
         title: str = None
 ) -> None:
     """
@@ -121,6 +122,7 @@ def plot_metrics(
     :param y_label: (optinal) Name of the y-axis label to display.
     :param y_range: (optional) Tuple containing the minimum and maximum values for the y-axis (y_min, y_max).
     :param legend_loc: (optional) Location for the legend, as a pair of (x, y) floats.
+    :param fig_size: (optional) Width, height in inches. Default is (10, 6).
     :param title: (optional) Title for the plot.
     :return:
     """
@@ -136,7 +138,7 @@ def plot_metrics(
             raise ValueError(f'Metric {metric} does not exist.')
 
     plt.style.use('default')
-    plt.figure(figsize=(10, 6), dpi=500)
+    plt.figure(figsize=fig_size, dpi=500)
 
     for metric in selected:
         plt.plot(df[x_axis], df[metric], label=metric)
@@ -179,10 +181,11 @@ def plot_heatmap(
         heat: str,
         x_label: str = None,
         y_label: str = None,
-        c_map: str = 'viridis',
+        c_map: str = None,
         v_range: tuple[float, float] = None,
         annotate: bool = False,
         fmt: str = '.2f',
+        fig_size: tuple[int, int] = (10, 6),
         title: str = None
 ) -> None:
     """
@@ -196,6 +199,7 @@ def plot_heatmap(
     :param v_range:
     :param annotate:
     :param fmt:
+    :param fig_size:
     :param title:
     :return:
     """
@@ -225,12 +229,13 @@ def plot_heatmap(
         metric_min = v_range[0] if v_range[0] is not None else round(df[heat].min(), 2)
         metric_max = v_range[1] if v_range[1] is not None else round(df[heat].max(), 2)
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=fig_size, dpi=500)
     sns.heatmap(
         pivot,
         cmap=c_map,
         vmin=metric_min,
         vmax=metric_max,
+        center=(metric_min + metric_max)*0.50,
         annot=annotate,
         fmt=fmt,
         cbar_kws={'label': heat},
