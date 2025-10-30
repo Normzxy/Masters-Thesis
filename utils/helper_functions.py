@@ -7,11 +7,23 @@ def proportional_split(
         proportions: np.ndarray
 ) -> list:
     """
-    Splits a number to proportional subsets.
-    
-    :param num_to_split: Number to be proportionally distributed.
-    :param proportions: Array of proportions.
-    :return: Array of proportional splits.
+    Splits an integer into proportional subsets based on an array-like of proportions.
+
+    This function multiplies each proportion by `num_to_split`, takes the floor of each value,
+    and then distributes any remaining units to the elements with the largest fractional parts.
+
+    Args:
+        num_to_split (int): Total integer value to be proportionally distributed.
+        proportions (array-like): One-dimensional array-like object
+            (e.g., list, tuple, np.ndarray) of non-negative proportions.
+
+    Returns:
+        list[int]: A list of integer counts representing the proportional splits.
+            The sum of all values equals `num_to_split`.
+
+    Notes:
+        - The final adjustment (adding 1 to largest fractions) is a rounding correction
+          to ensure the sum of resulting integers matches `num_to_split`.
     """
 
     raw = [p*num_to_split for p in proportions]
@@ -32,23 +44,30 @@ def spearman_with_bootstrap(
         list_1: list,
         list_2: list,
         n_boot: int = 1000,
-        random_seed: int =0
+        random_seed: int = 0
 ) -> dict:
     """
-    Computes the Spearman correlation coefficient between two lists
-    in the provided DataFrame and estimates a 95% confidence interval using bootstrap resampling.
-    :param list_1: The first list to be compared.
-    :param list_2: The second list to be compared.
-    :param n_boot: Int, optional (default=1000)
-                    Number of bootstrap resamples to estimate the confidence interval.
-    :param random_seed: Int, optional (default=0)
-                    Seed for the random number generator to ensure reproducibility.
-    :return: dict with the following keys:
-             - 'rho': Spearman correlation coefficient between two lists.
-             - 'pval': P-value testing the null hypothesis of no correlation.
-             - 'n': Number of parameter pairs used in the calculation.
-             - 'ci': tuple (lo, hi), 95% bootstrap confidence interval for the Spearman correlation.
+    Computes the Spearman rank correlation between two array-like inputs and estimates
+    a 95% bootstrap confidence interval.
+
+    Args:
+        list_1 (array-like): First sequence of numeric values (e.g., list, tuple, np.ndarray, pd.Series).
+            Must be the same length as `list_2`.
+        list_2 (array-like): Second sequence of numeric values (e.g., list, tuple, np.ndarray, pd.Series).
+            Must be the same length as `list_1`.
+        n_boot (int, optional): Number of bootstrap resamples used to estimate the confidence interval.
+            Default is 1000.
+        random_seed (int, optional): Seed for the random number generator to ensure reproducibility.
+            Default is 0.
+
+    Returns:
+        dict: Dictionary with the following keys:
+            - 'rho' (float): Spearman correlation coefficient between the two inputs.
+            - 'pval' (float): P-value testing the null hypothesis of no correlation.
+            - 'n' (int): Number of paired observations used.
+            - 'ci' (tuple[float, float]): 95% bootstrap confidence interval (lower, upper) for the correlation.
     """
+
     N = len(list_1)
 
     rho, pval = spearmanr(list_1, list_2)
@@ -81,24 +100,48 @@ def evaluate_model(
         Y_test: np.ndarray
 ) -> dict[str, float]:
     """
-    Evaluates a trained estimator, with basic sklearn metrics.
+    Evaluates a trained estimator using standard scikit-learn metrics.
 
-    :param estimator: Trained estimator to be evaluated.
-    :param X_test: Test features array to predict new labels.
-    :param Y_test: Real labels to compare with trained ones.
-    :return: Dictionary of evaluation results.
+    Args:
+        estimator: A trained scikit-learn-compatible estimator with a `predict` method.
+        X_test (array-like): Feature matrix for the test set (e.g., np.ndarray, pd.DataFrame, list of lists).
+            Must match the input format used during training.
+        Y_test (array-like): True labels for the test set (e.g., np.ndarray, pd.Series, list).
+            Must have the same length as `X_test`.
+
+    Returns:
+        dict: Dictionary of evaluation metrics such as accuracy, precision, recall, F1-score,
+            and any additional computed metrics depending on the implementation.
     """
 
+    if X_test.shape[0] != Y_test.shape[0]:
+        raise ValueError(f"X_test and Y_test must have same number of samples: ({X_test.shape[0]} != {Y_test.shape[0]}).")
+
+    if not hasattr(estimator, "predict"):
+        raise AttributeError("Estimator must implement a 'predict' method.")
+
     Y_pred = estimator.predict(X_test)
-    tn, fp, fn, tp = confusion_matrix(Y_test, Y_pred).ravel()
-    return {
-        'accuracy': accuracy_score(Y_test, Y_pred),
-        'precision': precision_score(Y_test, Y_pred, average='binary', pos_label=1),
-        'recall': recall_score(Y_test, Y_pred, average='binary', pos_label=1),
-        'f1_score': f1_score(Y_test, Y_pred, average='binary', pos_label=1),
-        'specificity': tn / (tn + fp),
-        'balanced_accuracy': balanced_accuracy_score(Y_test, Y_pred)
-    }
+
+    labels = np.unique(Y_test)
+    if labels.shape[0] == 2:
+        tn, fp, fn, tp = confusion_matrix(Y_test, Y_pred).ravel()
+
+        return {
+            'accuracy': accuracy_score(Y_test, Y_pred),
+            'precision': precision_score(Y_test, Y_pred, average='binary', pos_label=1, zero_division=0),
+            'recall': recall_score(Y_test, Y_pred, average='binary', pos_label=1, zero_division=0),
+            'f1_score': f1_score(Y_test, Y_pred, average='binary', pos_label=1, zero_division=0),
+            'specificity': tn / (tn + fp) if (tn + fp) != 0 else float('nan'),
+            'balanced_accuracy': balanced_accuracy_score(Y_test, Y_pred)
+        }
+    else:
+        return {
+            'accuracy': accuracy_score(Y_test, Y_pred),
+            'precision': precision_score(Y_test, Y_pred, average='macro', zero_division=0),
+            'recall': recall_score(Y_test, Y_pred, average='macro', zero_division=0),
+            'f1_score': f1_score(Y_test, Y_pred, average='macro', zero_division=0),
+            'balanced_accuracy': balanced_accuracy_score(Y_test, Y_pred)
+        }
 
 import matplotlib.pyplot as plt
 def plot_metrics(
@@ -109,22 +152,29 @@ def plot_metrics(
         x_label: str = None,
         y_label: str = None,
         y_range: tuple[float, float] = None,
-        legend_loc: tuple[float, float] = None,
+        legend_loc: tuple[float, float] = (0.04, 0.06),
         fig_size: tuple[int, int] = (10, 6),
         title: str = None
 ) -> None:
     """
-    :param df: DataFrame containing performance metrics.
-    :param selected: Performance metrics selected to be plotted.
-    :param x_axis: Name of the DataFrame column to plot on the x-axis.
-    :param x_step: Interval between ticks.
-    :param x_label: Name of the y-axis label to display.
-    :param y_label: (optinal) Name of the y-axis label to display.
-    :param y_range: (optional) Tuple containing the minimum and maximum values for the y-axis (y_min, y_max).
-    :param legend_loc: (optional) Location for the legend, as a pair of (x, y) floats.
-    :param fig_size: (optional) Width, height in inches. Default is (10, 6).
-    :param title: (optional) Title for the plot.
-    :return:
+    Plots selected performance metrics from a DataFrame.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing performance metrics. Must contain the columns specified in `selected` and `x_axis`.
+        selected (list[str]): List of column names from `df` to be plotted.
+        x_axis (str): Name of the DataFrame column to use for the x-axis.
+        x_step (int | float): Interval between x-axis ticks.
+        x_label (str): Label to display on the x-axis.
+        y_label (str, optional): Label to display on the y-axis.
+        y_range (tuple[float, float], optional): Tuple (y_min, y_max) defining y-axis limits.
+        legend_loc (tuple[float, float], optional): Location of the legend as (x, y) in axes coordinates.
+            Deafult is (0.04, 0.06).
+        fig_size (tuple[float, float], optional): Figure size as (width, height) in inches.
+            Default is (10, 6).
+        title (str, optional): Title for the plot.
+
+    Returns:
+        None
     """
 
     if df.empty:
@@ -163,8 +213,6 @@ def plot_metrics(
         plt.ylabel(y_label, size=10)
     plt.ylim(metric_min - 0.005, metric_max + 0.005)
 
-    if legend_loc is None:
-        legend_loc = (0.04, 0.06)
     plt.legend(loc='lower left', prop={'size': 12}, bbox_to_anchor=legend_loc)
 
     if title is not None:
@@ -189,19 +237,28 @@ def plot_heatmap(
         title: str = None
 ) -> None:
     """
-    :param df:
-    :param x_axis:
-    :param y_axis:
-    :param heat:
-    :param x_label:
-    :param y_label:
-    :param c_map:
-    :param v_range:
-    :param annotate:
-    :param fmt:
-    :param fig_size:
-    :param title:
-    :return:
+    Creates and displays a heatmap from a DataFrame pivot.
+
+    Args:
+        df (pd.DataFrame): Source DataFrame containing performance metrics. Must contain the columns specified in `x_axis`, `y_axis` and `heat`.
+        x_axis (str): Column name to use as columns in the pivot (x-axis).
+        y_axis (str): Column name to use as index in the pivot (y-axis).
+        heat (str): Column name whose values populate the heatmap cells.
+        x_label (str, optional): Label for the x-axis.
+        y_label (str, optional): Label for the y-axis.
+        c_map (str, optional): Colormap name to use for the heatmap.
+            Default same as in a Seaborn library.
+        v_range (tuple[float, float], optional): Tuple (vmin, vmax) defining color scale limits.
+            If None, limits are inferred from the range of `df[heat]`.
+        annotate (bool, optional): Whether to annotate each cell with its numeric value.
+            Default is False.
+        fmt (str, optional): String format for annotations. Default is '.2f'.
+        fig_size (tuple[int, int], optional): Figure size as (width, height) in inches.
+            Default is (10, 6).
+        title (str, optional): Title for the plot.
+
+    Returns:
+        None
     """
 
     if df.empty:
