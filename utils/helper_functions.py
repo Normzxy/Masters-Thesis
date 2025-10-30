@@ -142,11 +142,11 @@ def plot_metrics(
         plt.plot(df[x_axis], df[metric], label=metric)
 
     if y_range is None:
-        metric_min = round(df[selected].min(), 2)
-        metric_max = round(df[selected].max(), 2)
+        metric_min = round(df[selected].min().min(), 2)
+        metric_max = round(df[selected].max().max(), 2)
     else:
-        metric_min = y_range[0] if y_range[0] is not None else round(df[selected].min(), 2)
-        metric_max = y_range[1] if y_range[1] is not None else round(df[selected].max(), 2)
+        metric_min = y_range[0] if y_range[0] is not None else round(df[selected].min().min(), 2)
+        metric_max = y_range[1] if y_range[1] is not None else round(df[selected].max().max(), 2)
 
     plt.xticks(np.arange(df[x_axis].min(), df[x_axis].max() + x_step, x_step))
     plt.xticks(rotation=60, size=8)
