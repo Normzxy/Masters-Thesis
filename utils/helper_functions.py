@@ -231,6 +231,7 @@ def plot_heatmap(
         y_label: str = None,
         c_map: str = None,
         v_range: tuple[float, float] = None,
+        center: float = None,
         annotate: bool = False,
         fmt: str = '.2f',
         fig_size: tuple[int, int] = (10, 6),
@@ -250,6 +251,7 @@ def plot_heatmap(
             Default same as in a Seaborn library.
         v_range (tuple[float, float], optional): Tuple (vmin, vmax) defining color scale limits.
             If None, limits are inferred from the range of `df[heat]`.
+        center (float, optional): Center value of the heatmap color.
         annotate (bool, optional): Whether to annotate each cell with its numeric value.
             Default is False.
         fmt (str, optional): String format for annotations. Default is '.2f'.
@@ -292,7 +294,7 @@ def plot_heatmap(
         cmap=c_map,
         vmin=metric_min,
         vmax=metric_max,
-        center=(metric_min + metric_max)*0.50,
+        center=center,
         annot=annotate,
         fmt=fmt,
         cbar_kws={'label': heat},
